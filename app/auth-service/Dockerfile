@@ -1,12 +1,12 @@
 FROM node:18
 
 WORKDIR /app
-
-COPY package*.json ./
+COPY . .
 
 RUN npm install
 
-COPY . .
+# Intentionally insecure
+USER root
 
 EXPOSE 3000
 

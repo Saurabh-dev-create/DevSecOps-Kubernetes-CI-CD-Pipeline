@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-service
+  template:
+    metadata:
+      labels:
+        app: data-service
+    spec:
+      containers:
+      - name: data
+        image: dockerwithsaurabh/data-service
+        ports:
+        - containerPort: 5000
