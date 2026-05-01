@@ -7,6 +7,8 @@ app.use(express.json());
 // ❌ Hardcoded secret (intentional vulnerability)
 const SECRET_KEY = "my-super-secret-key";
 const AWS_SECRET_ACCESS_KEY = "AKIA1234567890EXAMPLE";
+const password = "password123";
+const api_key = "1234567890abcdef";
 // In-memory DB
 const db = new sqlite3.Database(':memory:');
 
