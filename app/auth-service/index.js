@@ -1,49 +1,130 @@
-const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const express = require("express");
+const axios = require("axios");
+const jwt = require("jsonwebtoken");
 
 const app = express();
+
 app.use(express.json());
 
-// ❌ Hardcoded secret (intentional vulnerability)
-const SECRET_KEY = "my-super-secret-key";
-const AWS_SECRET_ACCESS_KEY = "AKIA1234567890EXAMPLE";
-const password = "password123";
-const api_key = process.env.API_KEY;
-// In-memory DB
-const db = new sqlite3.Database(':memory:');
+const PORT = process.env.PORT || 3000;
+const DATA_SERVICE_URL =
+    process.env.DATA_SERVICE_URL || "http://data-service:5000";
 
-// Create table
-db.serialize(() => {
-  db.run("CREATE TABLE users (id INT, username TEXT, password TEXT)");
-  db.run("INSERT INTO users VALUES (1, 'Saurabh', 'Saurabh123')");
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    console.error("JWT_SECRET environment variable is required");
+    process.exit(1);
+}
+
+/*
+ * Health endpoint
+ */
+app.get("/health", (req, res) => {
+    res.json({
+        service: "auth-service",
+        status: "healthy"
+    });
 });
 
-// ❌ SQL Injection vulnerability
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
+/*
+ * Authentication endpoint
+ *
+ * Auth Service delegates credential verification
+ * to the Data Service.
+ */
+app.post("/login", async (req, res) => {
 
-  const query = `SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`;
+    const { username, password } = req.body;
 
-  db.get(query, (err, row) => {
-    if (row) {
-      res.json({ message: "Login successful", secret: SECRET_KEY });
-    } else {
-      res.status(401).json({ message: "Unauthorized" });
+    if (!username || !password) {
+        return res.status(400).json({
+            message: "Username and password are required"
+        });
     }
-  });
+
+    try {
+
+        const response = await axios.post(
+            `${DATA_SERVICE_URL}/authenticate`,
+            {
+                username,
+                password
+            }
+        );
+
+        const user = response.data;
+
+        const token = jwt.sign(
+            {
+                sub: user.id,
+                username: user.username,
+                role: user.role
+            },
+            JWT_SECRET,
+            {
+                expiresIn: "15m"
+            }
+        );
+
+        return res.json({
+            message: "Login successful",
+            token
+        });
+
+    } catch (error) {
+
+        if (error.response) {
+
+            return res.status(error.response.status).json(
+                error.response.data
+            );
+        }
+
+        console.error("Data service error:", error.message);
+
+        return res.status(503).json({
+            message: "Authentication service unavailable"
+        });
+    }
 });
 
-// Protected route (weak auth)
-app.get('/data', (req, res) => {
-  const auth = req.headers.authorization;
+/*
+ * Example protected endpoint.
+ *
+ * This will later become a proper authorization
+ * demonstration using JWT and role-based access.
+ */
+app.get("/data", async (req, res) => {
 
-  if (auth === SECRET_KEY) {
-    res.json({ data: "Sensitive Data" });
-  } else {
-    res.status(403).json({ message: "Forbidden" });
-  }
+    const authorization = req.headers.authorization;
+
+    if (!authorization || !authorization.startsWith("Bearer ")) {
+        return res.status(401).json({
+            message: "Authentication required"
+        });
+    }
+
+    const token = authorization.split(" ")[1];
+
+    try {
+
+        const decoded = jwt.verify(token, JWT_SECRET);
+
+        return res.json({
+            message: "Authenticated request",
+            user: decoded,
+            data: "Sensitive Data"
+        });
+
+    } catch (error) {
+
+        return res.status(401).json({
+            message: "Invalid or expired token"
+        });
+    }
 });
 
-app.listen(3000, () => {
-  console.log("App running on port 3000");
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Auth Service running on port ${PORT}`);
 });

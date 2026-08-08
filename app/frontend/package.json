@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "npx serve ."
+    "start": "serve -l 3001 ."
   },
   "dependencies": {
     "serve": "^14.2.1"
