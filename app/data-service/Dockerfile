@@ -1,16 +1,28 @@
-FROM python:3.12-slim
+FROM python:3.12-alpine AS dependencies
 
 WORKDIR /app
 
-RUN useradd --create-home --uid 10001 appuser
+RUN python -m venv /opt/venv
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
+
+
+FROM python:3.12-alpine AS runtime
+
+WORKDIR /app
+
+RUN addgroup -S -g 10001 appgroup \
+    && adduser -S -D -H -u 10001 -G appgroup appuser
+
+COPY --from=dependencies /opt/venv /opt/venv
 
 COPY app.py .
 
-RUN chown -R appuser:appuser /app
+RUN chown -R appuser:appgroup /app /opt/venv
+
+ENV PATH="/opt/venv/bin:$PATH"
 
 USER appuser
 
