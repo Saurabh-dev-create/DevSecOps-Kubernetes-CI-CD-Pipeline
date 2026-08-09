@@ -2,6 +2,10 @@ pipeline {
 
     agent any
 
+    options {
+    skipDefaultCheckout(true)
+    }
+
     environment {
         GITLEAKS_IMAGE = 'ghcr.io/gitleaks/gitleaks:v8.30.0'
     }
