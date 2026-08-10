@@ -3,11 +3,12 @@ pipeline {
     agent any
 
     options {
-    skipDefaultCheckout(true)
+        skipDefaultCheckout(true)
     }
 
     environment {
         GITLEAKS_IMAGE = 'ghcr.io/gitleaks/gitleaks:v8.30.0'
+        TRIVY_IMAGE = 'aquasec/trivy:0.72.0'
     }
 
     stages {
@@ -32,6 +33,7 @@ pipeline {
                     test -f app/data-service/requirements.txt
 
                     test -f app/frontend/package.json
+                    test -f app/frontend/package-lock.json
                     test -f docker-compose.yml
 
                     echo "Repository structure OK"
@@ -77,17 +79,76 @@ pipeline {
                 sh '''
                     set -e
 
+                    echo "Building auth-service..."
                     docker build \
                         -t devsecops/auth-service:${BUILD_NUMBER} \
                         ./app/auth-service
 
+                    echo "Building data-service..."
                     docker build \
                         -t devsecops/data-service:${BUILD_NUMBER} \
                         ./app/data-service
 
+                    echo "Building frontend..."
                     docker build \
                         -t devsecops/frontend:${BUILD_NUMBER} \
                         ./app/frontend
+
+                    echo "Docker image builds completed"
+                '''
+            }
+        }
+
+        stage('Security Scan - Trivy') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "Running Trivy vulnerability scans in ephemeral containers..."
+
+                    echo "======================================"
+                    echo "Scanning auth-service"
+                    echo "======================================"
+
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        "$TRIVY_IMAGE" \
+                        image \
+                        --severity HIGH,CRITICAL \
+                        --exit-code 1 \
+                        devsecops/auth-service:${BUILD_NUMBER}
+
+                    echo "auth-service Trivy scan passed"
+
+                    echo "======================================"
+                    echo "Scanning data-service"
+                    echo "======================================"
+
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        "$TRIVY_IMAGE" \
+                        image \
+                        --severity HIGH,CRITICAL \
+                        --exit-code 1 \
+                        devsecops/data-service:${BUILD_NUMBER}
+
+                    echo "data-service Trivy scan passed"
+
+                    echo "======================================"
+                    echo "Scanning frontend"
+                    echo "======================================"
+
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        "$TRIVY_IMAGE" \
+                        image \
+                        --severity HIGH,CRITICAL \
+                        --exit-code 1 \
+                        devsecops/frontend:${BUILD_NUMBER}
+
+                    echo "frontend Trivy scan passed"
+
+                    echo "All Trivy security scans passed"
                 '''
             }
         }
@@ -110,7 +171,7 @@ pipeline {
     post {
 
         success {
-            echo 'CI baseline with containerized secret scanning completed successfully.'
+            echo 'CI security pipeline completed successfully.'
         }
 
         failure {
