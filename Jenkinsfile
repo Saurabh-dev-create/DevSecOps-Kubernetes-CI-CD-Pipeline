@@ -8,6 +8,8 @@ pipeline {
     environment {
         GITLEAKS_IMAGE = 'ghcr.io/gitleaks/gitleaks:v8.30.0'
         TRIVY_IMAGE = 'aquasec/trivy:0.72.0'
+        AWS_REGION = 'ap-south-1'
+        ECR_REGISTRY = '882640845424.dkr.ecr.ap-south-1.amazonaws.com'
     }
 
     stages {
@@ -78,17 +80,26 @@ pipeline {
                 sh '''
                     set -e
 
-                    echo "Building auth-service..."
+                    echo "======================================"
+                    echo "Building auth-service"
+                    echo "======================================"
+
                     docker build \
                         -t devsecops/auth-service:${BUILD_NUMBER} \
                         ./app/auth-service
 
-                    echo "Building data-service..."
+                    echo "======================================"
+                    echo "Building data-service"
+                    echo "======================================"
+
                     docker build \
                         -t devsecops/data-service:${BUILD_NUMBER} \
                         ./app/data-service
 
-                    echo "Building frontend..."
+                    echo "======================================"
+                    echo "Building frontend"
+                    echo "======================================"
+
                     docker build \
                         -t devsecops/frontend:${BUILD_NUMBER} \
                         ./app/frontend
@@ -152,7 +163,7 @@ pipeline {
             }
         }
 
-        stage('ECR Authentication Test') {
+        stage('Push Images to ECR') {
             steps {
                 withCredentials([
                     [$class: 'AmazonWebServicesCredentialsBinding',
@@ -161,20 +172,71 @@ pipeline {
                     sh '''
                         set -e
 
-                        echo "Testing AWS authentication from Jenkins..."
+                        echo "======================================"
+                        echo "Authenticating with Amazon ECR"
+                        echo "======================================"
 
                         aws sts get-caller-identity
 
-                        echo "Testing ECR authentication..."
-
                         aws ecr get-login-password \
-                            --region ap-south-1 \
+                            --region "$AWS_REGION" \
                             | docker login \
                                 --username AWS \
                                 --password-stdin \
-                                882640845424.dkr.ecr.ap-south-1.amazonaws.com
+                                "$ECR_REGISTRY"
 
                         echo "ECR authentication successful"
+
+                        echo "======================================"
+                        echo "Tagging Docker images"
+                        echo "======================================"
+
+                        docker tag \
+                            devsecops/auth-service:${BUILD_NUMBER} \
+                            "$ECR_REGISTRY/auth-service:${BUILD_NUMBER}"
+
+                        docker tag \
+                            devsecops/data-service:${BUILD_NUMBER} \
+                            "$ECR_REGISTRY/data-service:${BUILD_NUMBER}"
+
+                        docker tag \
+                            devsecops/frontend:${BUILD_NUMBER} \
+                            "$ECR_REGISTRY/frontend:${BUILD_NUMBER}"
+
+                        echo "Docker images tagged successfully"
+
+                        echo "======================================"
+                        echo "Pushing auth-service"
+                        echo "======================================"
+
+                        docker push \
+                            "$ECR_REGISTRY/auth-service:${BUILD_NUMBER}"
+
+                        echo "auth-service:${BUILD_NUMBER} pushed successfully"
+
+                        echo "======================================"
+                        echo "Pushing data-service"
+                        echo "======================================"
+
+                        docker push \
+                            "$ECR_REGISTRY/data-service:${BUILD_NUMBER}"
+
+                        echo "data-service:${BUILD_NUMBER} pushed successfully"
+
+                        echo "======================================"
+                        echo "Pushing frontend"
+                        echo "======================================"
+
+                        docker push \
+                            "$ECR_REGISTRY/frontend:${BUILD_NUMBER}"
+
+                        echo "frontend:${BUILD_NUMBER} pushed successfully"
+
+                        echo "======================================"
+                        echo "All images pushed to ECR successfully"
+                        echo "======================================"
+
+                        docker logout "$ECR_REGISTRY"
                     '''
                 }
             }
@@ -190,6 +252,14 @@ pipeline {
                     docker images devsecops/auth-service
                     docker images devsecops/data-service
                     docker images devsecops/frontend
+
+                    echo "======================================"
+                    echo "ECR artifacts"
+                    echo "======================================"
+
+                    echo "$ECR_REGISTRY/auth-service:${BUILD_NUMBER}"
+                    echo "$ECR_REGISTRY/data-service:${BUILD_NUMBER}"
+                    echo "$ECR_REGISTRY/frontend:${BUILD_NUMBER}"
                 '''
             }
         }
