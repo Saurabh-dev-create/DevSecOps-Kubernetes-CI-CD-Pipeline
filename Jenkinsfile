@@ -1,4 +1,5 @@
 pipeline {
+
     agent any
 
     options {
@@ -8,6 +9,7 @@ pipeline {
     environment {
         GITLEAKS_IMAGE = 'ghcr.io/gitleaks/gitleaks:v8.30.0'
         TRIVY_IMAGE = 'aquasec/trivy:0.72.0'
+
         AWS_REGION = 'ap-south-1'
         ECR_REGISTRY = '882640845424.dkr.ecr.ap-south-1.amazonaws.com'
     }
@@ -72,6 +74,34 @@ pipeline {
 
                     echo "Application syntax checks passed"
                 '''
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'sonar-scanner'
+
+                    withSonarQubeEnv('sonarqube') {
+                        sh """
+                            set -e
+
+                            echo "======================================"
+                            echo "Running SonarQube Analysis"
+                            echo "======================================"
+
+                            "${scannerHome}/bin/sonar-scanner" \
+                                -Dsonar.projectKey=devsecops-kubernetes-ci-cd \
+                                -Dsonar.projectName=devsecops-kubernetes-ci-cd \
+                                -Dsonar.sources=app \
+                                -Dsonar.exclusions='**/node_modules/**,**/package-lock.json,**/__pycache__/**'
+
+                            echo "======================================"
+                            echo "SonarQube analysis completed"
+                            echo "======================================"
+                        """
+                    }
+                }
             }
         }
 
