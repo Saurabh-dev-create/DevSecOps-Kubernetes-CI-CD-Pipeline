@@ -1,5 +1,4 @@
 pipeline {
-
     agent any
 
     options {
@@ -150,6 +149,34 @@ pipeline {
 
                     echo "All Trivy security scans passed"
                 '''
+            }
+        }
+
+        stage('ECR Authentication Test') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-ecr-jenkins']
+                ]) {
+                    sh '''
+                        set -e
+
+                        echo "Testing AWS authentication from Jenkins..."
+
+                        aws sts get-caller-identity
+
+                        echo "Testing ECR authentication..."
+
+                        aws ecr get-login-password \
+                            --region ap-south-1 \
+                            | docker login \
+                                --username AWS \
+                                --password-stdin \
+                                882640845424.dkr.ecr.ap-south-1.amazonaws.com
+
+                        echo "ECR authentication successful"
+                    '''
+                }
             }
         }
 
