@@ -2,9 +2,10 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: attacker-pod
+  namespace: default
 spec:
   serviceAccountName: vulnerable-sa
   containers:
-  - name: attacker
-    image: bitnami/kubectl
-    command: ["sleep", "3600"]
+    - name: attacker
+      image: bitnami/kubectl
+      command: ["sleep", "3600"]
