@@ -13,7 +13,28 @@ spec:
         app: data-service
     spec:
       containers:
-      - name: data
-        image: dockerwithsaurabh/data-service
-        ports:
-        - containerPort: 5000
+        - name: data
+          securityContext:
+            privileged: false
+          image: 882640845424.dkr.ecr.ap-south-1.amazonaws.com/data-service:13
+          ports:
+            - containerPort: 5000
+          env:
+            - name: DB_HOST
+              value: postgres
+            - name: DB_NAME
+              value: devsecops
+            - name: DB_USER
+              value: admin
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
