@@ -438,47 +438,63 @@ pipeline {
         }
 
 
+
         // =========================================================
         // 10. KUBERNETES MANIFEST VALIDATION
-        // =========================================================
-        //
-        // IMPORTANT:
-        // Only production application manifests are validated.
-        // Security-test manifests such as attacker-pod.yaml and
-        // rbac-vulnerable.yaml remain available for demonstrations
-        // but are NOT part of normal application deployment.
         // =========================================================
 
         stage('Kubernetes Manifest Validation') {
 
             steps {
 
-                sh '''
-                    set -e
+                withCredentials([
+                    [
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-ecr-jenkins'
+                    ]
+                ]) {
 
-                    echo "=============================================="
-                    echo "KUBERNETES MANIFEST VALIDATION"
-                    echo "=============================================="
+                    sh '''
+                        set -e
 
-                    kubectl apply \
-                        --dry-run=server \
-                        -f kubernetes/postgres.yaml \
-                        -f kubernetes/postgres-deployment.yaml \
-                        -f kubernetes/auth-service.yaml \
-                        -f kubernetes/auth-service-deployment.yaml \
-                        -f kubernetes/data-service.yaml \
-                        -f kubernetes/data-service-deployment.yaml \
-                        -f kubernetes/frontend.yaml \
-                        -f kubernetes/frontend-deployment.yaml
+                        echo "=============================================="
+                        echo "KUBERNETES MANIFEST VALIDATION"
+                        echo "=============================================="
 
-                    echo ""
-                    echo "Kubernetes manifest validation PASSED"
+                        echo "AWS identity:"
+                        aws sts get-caller-identity
 
-                    echo "Kyverno admission policies will be enforced"
-                    echo "during the actual Kubernetes deployment."
+                        echo ""
+                        echo "Kubernetes context:"
+                        kubectl config current-context
 
-                    echo "=============================================="
-                '''
+                        echo ""
+                        echo "Validating Kubernetes access:"
+                        kubectl get nodes
+
+                        echo ""
+                        echo "Validating manifests..."
+
+                        kubectl apply \
+                            --dry-run=server \
+                            -f kubernetes/postgres.yaml \
+                            -f kubernetes/postgres-deployment.yaml \
+                            -f kubernetes/auth-service.yaml \
+                            -f kubernetes/auth-service-deployment.yaml \
+                            -f kubernetes/data-service.yaml \
+                            -f kubernetes/data-service-deployment.yaml \
+                            -f kubernetes/frontend.yaml \
+                            -f kubernetes/frontend-deployment.yaml
+
+                        echo ""
+                        echo "Kubernetes manifest validation PASSED"
+
+                        echo "Kyverno admission policies will be enforced"
+                        echo "during the actual Kubernetes deployment."
+
+                        echo "=============================================="
+                    '''
+                }
             }
         }
 
@@ -491,45 +507,61 @@ pipeline {
 
             steps {
 
-                sh '''
-                    set -e
+                withCredentials([
+                    [
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-ecr-jenkins'
+                    ]
+                ]) {
 
-                    echo "=============================================="
-                    echo "KUBERNETES DEPLOYMENT"
-                    echo "=============================================="
+                    sh '''
+                        set -e
 
-                    echo "Applying application manifests..."
+                        echo "=============================================="
+                        echo "KUBERNETES DEPLOYMENT"
+                        echo "=============================================="
 
-                    kubectl apply \
-                        -f kubernetes/postgres.yaml \
-                        -f kubernetes/postgres-deployment.yaml \
-                        -f kubernetes/auth-service.yaml \
-                        -f kubernetes/auth-service-deployment.yaml \
-                        -f kubernetes/data-service.yaml \
-                        -f kubernetes/data-service-deployment.yaml \
-                        -f kubernetes/frontend.yaml \
-                        -f kubernetes/frontend-deployment.yaml
+                        echo "AWS identity:"
+                        aws sts get-caller-identity
 
-                    echo ""
-                    echo "Updating application images..."
+                        echo ""
+                        echo "Kubernetes context:"
+                        kubectl config current-context
 
-                    kubectl -n "$K8S_NAMESPACE" set image \
-                        deployment/"$AUTH_DEPLOYMENT" \
-                        "$AUTH_CONTAINER=$ECR_REGISTRY/auth-service:${BUILD_NUMBER}"
+                        echo ""
+                        echo "Applying application manifests..."
 
-                    kubectl -n "$K8S_NAMESPACE" set image \
-                        deployment/"$DATA_DEPLOYMENT" \
-                        "$DATA_CONTAINER=$ECR_REGISTRY/data-service:${BUILD_NUMBER}"
+                        kubectl apply \
+                            -f kubernetes/postgres.yaml \
+                            -f kubernetes/postgres-deployment.yaml \
+                            -f kubernetes/auth-service.yaml \
+                            -f kubernetes/auth-service-deployment.yaml \
+                            -f kubernetes/data-service.yaml \
+                            -f kubernetes/data-service-deployment.yaml \
+                            -f kubernetes/frontend.yaml \
+                            -f kubernetes/frontend-deployment.yaml
 
-                    kubectl -n "$K8S_NAMESPACE" set image \
-                        deployment/"$FRONTEND_DEPLOYMENT" \
-                        "$FRONTEND_CONTAINER=$ECR_REGISTRY/frontend:${BUILD_NUMBER}"
+                        echo ""
+                        echo "Updating application images..."
 
-                    echo ""
-                    echo "Kubernetes deployment submitted."
+                        kubectl -n "$K8S_NAMESPACE" set image \
+                            deployment/"$AUTH_DEPLOYMENT" \
+                            "$AUTH_CONTAINER=$ECR_REGISTRY/auth-service:${BUILD_NUMBER}"
 
-                    echo "=============================================="
-                '''
+                        kubectl -n "$K8S_NAMESPACE" set image \
+                            deployment/"$DATA_DEPLOYMENT" \
+                            "$DATA_CONTAINER=$ECR_REGISTRY/data-service:${BUILD_NUMBER}"
+
+                        kubectl -n "$K8S_NAMESPACE" set image \
+                            deployment/"$FRONTEND_DEPLOYMENT" \
+                            "$FRONTEND_CONTAINER=$ECR_REGISTRY/frontend:${BUILD_NUMBER}"
+
+                        echo ""
+                        echo "Kubernetes deployment submitted."
+
+                        echo "=============================================="
+                    '''
+                }
             }
         }
 
