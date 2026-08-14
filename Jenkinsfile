@@ -574,7 +574,14 @@ pipeline {
 
             steps {
 
-                sh '''
+                withCredentials([
+                    [
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-ecr-jenkins'
+                    ]
+                ]) {
+
+                    sh '''
                     set -e
 
                     echo "=============================================="
@@ -616,7 +623,8 @@ pipeline {
                     echo "Kubernetes rollout PASSED"
 
                     echo "=============================================="
-                '''
+                    '''
+                }
             }
         }
 
@@ -629,7 +637,14 @@ pipeline {
 
             steps {
 
-                sh '''
+                withCredentials([
+                    [
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-ecr-jenkins'
+                    ]
+                ]) {
+
+                    sh '''
                     set -e
 
                     echo "=============================================="
@@ -667,7 +682,8 @@ pipeline {
                     echo "Expected Jenkins build: ${BUILD_NUMBER}"
 
                     echo "=============================================="
-                '''
+                    '''
+                }
             }
         }
 
@@ -680,7 +696,14 @@ pipeline {
 
             steps {
 
-                sh '''
+                withCredentials([
+                    [
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-ecr-jenkins'
+                    ]
+                ]) {
+
+                    sh '''
                     set -e
 
                     echo "=============================================="
