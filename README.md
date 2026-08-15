@@ -203,6 +203,28 @@ The application contains three application services and PostgreSQL.
 
 ---
 
+## CI/CD Pipeline
+
+The Jenkins pipeline implements an end-to-end DevSecOps workflow:
+
+- Source checkout and validation
+- Secret scanning with Gitleaks
+- Application syntax validation
+- Static code analysis with SonarQube
+- Quality gate enforcement
+- Docker image build
+- Container vulnerability scanning with Trivy
+- Image publishing to Amazon ECR
+- Kubernetes manifest validation
+- Kubernetes deployment
+- Rollout verification
+- Deployed image verification
+- Application smoke testing
+
+### Jenkins Pipeline Execution
+
+![Jenkins DevSecOps CI/CD Pipeline](docs/screenshots/devsecops-pipeline-jenkins.png)
+
 # 🔄 Complete CI/CD Pipeline
 
 The Jenkins pipeline is structured into **15 stages**.
@@ -473,6 +495,24 @@ directly.
 The frontend container was also verified to run as the non-root `node` user.
 
 ---
+
+## Container Security — Trivy
+
+The CI/CD pipeline performs container image vulnerability scanning with
+[Trivy](https://github.com/aquasecurity/trivy) before deployment.
+
+The scan covers:
+- OS packages
+- Python dependencies
+- Container image vulnerabilities
+- Secret detection
+
+### Trivy Scan Result
+
+![Trivy Container Security Scan](docs/screenshots/trivy-security-scan.png)
+
+The displayed scan results show **0 vulnerabilities** and no detected
+secrets across the scanned targets.
 
 # 8️⃣ Trivy Container Security
 
@@ -844,6 +884,24 @@ This demonstrates the distinction between:
 
 # 📊 Observability
 
+### Kubernetes Observability Stack
+
+The monitoring namespace runs the core observability components required for metrics, logs, alerts, and telemetry collection.
+
+The deployed stack includes:
+
+- Prometheus
+- Grafana
+- Alertmanager
+- Loki
+- Tempo
+- OpenTelemetry Collector
+- kube-state-metrics
+- Prometheus Node Exporter
+
+![Kubernetes Observability Stack](docs/screenshots/monitoring-stack-pods.png)
+
+*Running Kubernetes observability components across the monitoring namespace.*
 
 ### Grafana Observability Data Sources
 
@@ -886,7 +944,25 @@ Applications
      │                           Grafana
      │
      └──────── Traces ─────────► OpenTelemetry
+
 ```
+
+### Centralized Kubernetes Logging with Loki
+
+Loki provides centralized log aggregation for Kubernetes workloads and is integrated with Grafana for log exploration and troubleshooting.
+
+The Grafana Explore view demonstrates:
+
+- Kubernetes pod log collection
+- Log volume over time
+- Log severity distribution
+- Namespace and workload labels
+- Interactive log exploration through Grafana
+
+![Grafana Loki Log Exploration](docs/screenshots/grafana-loki-log-exploration.png)
+
+*Grafana Explore querying centralized Kubernetes logs through Loki.*
+
 
 Observability complements the security pipeline by allowing operators to investigate application and infrastructure behavior after deployment.
 
@@ -899,6 +975,22 @@ Grafana provides Kubernetes resource and workload visibility using Prometheus me
 
 ![Grafana Cluster Resources](docs/screenshots/grafana-cluster-resources.png)
 
+### Slack Incident Alerting
+
+The observability stack integrates with Slack to provide real-time incident notifications for Kubernetes workloads.
+
+When a monitored workload enters a critical state, Alertmanager sends a structured notification to the `#security-alerts` channel containing:
+
+- Alert severity
+- Kubernetes namespace
+- Affected pod and container
+- Incident summary
+- Detailed description
+- Runbook reference
+
+![Slack Kubernetes Critical Alert](docs/screenshots/slack-kubernetes-critical-alert.png)
+
+*Critical Kubernetes CrashLoopBackOff alert delivered to Slack with incident context and runbook information.*
 
 # 🏗️ Terraform
 
@@ -939,7 +1031,17 @@ EKS
     ▼
 Kubernetes Platform
 ```
+### 🔐 Terraform Remote State Security
 
+Terraform state is stored in an encrypted and versioned Amazon S3
+backend with public access blocked.
+
+- AES-256 server-side encryption
+- S3 public access blocked
+- S3 bucket versioning enabled
+- Remote state separated from application infrastructure
+
+![Terraform S3 Backend Security](docs/screenshots/terraform-s3-backend-security.png)
 ---
 
 # 🗂️ Repository Structure
