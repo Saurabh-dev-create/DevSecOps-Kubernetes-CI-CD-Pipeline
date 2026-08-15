@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubernetes-crashloop-alert
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: kubernetes-alerts
+      rules:
+        - alert: KubernetesPodCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total[10m]) > 3
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod is CrashLoopBackOff"
+            description: |
+              Pod {{ $labels.namespace }}/{{ $labels.pod }}
+              is restarting repeatedly.
+            runbook: "Check pod logs and describe the pod"

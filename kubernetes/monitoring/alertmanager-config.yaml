@@ -1,0 +1,13 @@
+receivers:
+  - name: slack-security-alerts
+    slack_configs:
+      - api_url: $SLACK_WEBHOOK_URL
+        channel: "#security-alerts"
+        send_resolved: true
+
+route:
+  receiver: slack-security-alerts
+  group_by:
+    - alertname
+    - namespace
+    - pod
