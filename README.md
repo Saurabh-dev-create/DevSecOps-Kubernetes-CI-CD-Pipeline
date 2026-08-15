@@ -513,6 +513,11 @@ using:
 Therefore Trivy is a **blocking security gate**, not merely an informational report.
 
 ---
+### AWS ECR Container Registry
+
+Docker images produced by the CI/CD pipeline are published to Amazon ECR for consumption by the Kubernetes deployment workflow.
+
+![AWS ECR Repositories](docs/screenshots/aws-ecr-repositories.png)
 
 # 9️⃣ AWS ECR
 
@@ -665,6 +670,21 @@ This allows the project to demonstrate both insecure and hardened Kubernetes con
 
 ---
 
+### Kyverno Policy Enforcement — Blocked Workloads
+
+Kyverno actively enforces Kubernetes admission policies and prevents insecure workloads from being deployed.
+
+The demonstration shows two policy violations being rejected by the Kubernetes admission webhook:
+
+- **`disallow-latest-tag`** — blocks containers using the mutable `latest` image tag.
+- **`disallow-privileged`** — blocks containers configured with `securityContext.privileged: true`.
+
+These policies provide a preventive security control at the Kubernetes admission layer.
+
+![Kyverno Blocking Insecure Kubernetes Workloads](docs/screenshots/kyverno-policy-blocking.png)
+
+*Kyverno admission policies rejecting workloads that violate image-tag and privileged-container security requirements.*
+
 # 🔒 Kyverno Admission Control
 
 Kyverno is used as a Kubernetes admission policy engine.
@@ -770,6 +790,21 @@ Evidence
 This makes the project more suitable for security-focused DevOps and DevSecOps interviews.
 
 ---
+### Falco Runtime Security Initialization
+
+Falco is deployed as a Kubernetes runtime-security component to monitor system activity and container behavior.
+
+The following evidence shows Falco successfully:
+
+- Loading and validating its configuration
+- Loading and validating Falco detection rules
+- Enabling syscall-based event monitoring
+- Initializing container-runtime integrations
+- Starting its health webserver
+
+![Falco Runtime Security Initialization](docs/screenshots/falco-runtime-security.png)
+
+*Falco successfully initialized its configuration, detection rules, syscall event sources, and container-runtime integrations.*
 
 # 🛡️ Falco Runtime Security
 
@@ -809,6 +844,24 @@ This demonstrates the distinction between:
 
 # 📊 Observability
 
+
+### Grafana Observability Data Sources
+
+Grafana is configured as the central observability interface for the Kubernetes platform.
+
+The configured data sources include:
+
+- **Prometheus** — metrics and Kubernetes monitoring
+- **Loki** — centralized log aggregation
+- **Tempo** — distributed tracing
+- **Alertmanager** — alert management and routing
+
+This provides a unified observability layer for metrics, logs, traces, and alerts.
+
+![Grafana Observability Data Sources](docs/screenshots/grafana-data-sources.png)
+
+*Grafana configured with Prometheus, Loki, Tempo, and Alertmanager data sources.*
+
 The repository contains:
 
 ```text
@@ -838,6 +891,14 @@ Applications
 Observability complements the security pipeline by allowing operators to investigate application and infrastructure behavior after deployment.
 
 ---
+### Grafana Kubernetes Monitoring
+
+Grafana provides Kubernetes resource and workload visibility using Prometheus metrics.
+
+![Grafana Kubernetes Overview](docs/screenshots/grafana-kubernetes-overview.png)
+
+![Grafana Cluster Resources](docs/screenshots/grafana-cluster-resources.png)
+
 
 # 🏗️ Terraform
 
