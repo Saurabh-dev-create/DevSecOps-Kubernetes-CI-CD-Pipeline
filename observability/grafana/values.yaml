@@ -1,0 +1,23 @@
+grafana:
+  enabled: true
+
+  persistence:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      folder: /tmp/dashboards
+      searchNamespace: ALL
+
+    datasources:
+      enabled: true

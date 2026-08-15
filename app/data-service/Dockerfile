@@ -1,38 +1,31 @@
-# FROM python:3.9
-
-# WORKDIR /app
-
-# COPY . .
-
-# RUN pip install flask
-
-# USER root
-
-# EXPOSE 5000
-
-# CMD ["python","app.py"]
-
-# Above Dockerfile is intentionall insecure to prove trivy working to check fail container
-
-FROM python:3.9-slim
+FROM python:3.12-alpine AS dependencies
 
 WORKDIR /app
 
-COPY . .
+RUN python -m venv /opt/venv
 
-# Upgrade packaging tools to secure versions
+COPY requirements.txt .
 
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-# Install application dependency
 
-RUN pip install --no-cache-dir flask
+FROM python:3.12-alpine AS runtime
 
-# Create a non-root user
+WORKDIR /app
 
-RUN useradd -m appuser
+RUN addgroup -S -g 10001 appgroup \
+    && adduser -S -D -H -u 10001 -G appgroup appuser
+
+COPY --from=dependencies /opt/venv /opt/venv
+
+COPY app.py .
+
+RUN chown -R appuser:appgroup /app /opt/venv
+
+ENV PATH="/opt/venv/bin:$PATH"
+
 USER appuser
 
 EXPOSE 5000
 
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "2", "--access-logfile", "-", "app:app"]

@@ -1,0 +1,119 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-db
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./app/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    restart: unless-stopped
+
+
+  data-service:
+    build:
+      context: ./app/data-service
+
+    container_name: data-service
+
+    environment:
+      DB_HOST: postgres
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+    ports:
+      - "${DATA_PORT:-5000}:5000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    restart: unless-stopped
+
+
+  auth-service:
+    build:
+      context: ./app/auth-service
+
+    container_name: auth-service
+
+    environment:
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      DATA_SERVICE_URL: http://data-service:5000
+
+    ports:
+      - "${AUTH_PORT:-3000}:3000"
+
+    depends_on:
+      data-service:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3000/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    restart: unless-stopped
+
+
+  frontend:
+    build:
+      context: ./app/frontend
+
+    container_name: frontend
+
+    ports:
+      - "${FRONTEND_PORT:-3001}:3001"
+
+    depends_on:
+      auth-service:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+
+volumes:
+  postgres-data:

@@ -1,4 +1,4 @@
-FROM node:22-alpine AS dependencies
+FROM node:20-alpine AS dependencies
 
 WORKDIR /app
 
@@ -8,22 +8,22 @@ RUN npm ci --omit=dev \
     && npm cache clean --force
 
 
-FROM node:22-alpine AS runtime
+FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
+RUN apk upgrade --no-cache
+
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY package.json ./
-COPY index.js ./
+COPY index.html ./
 
-# npm is needed only during dependency installation,
-# not during application runtime.
 RUN rm -rf /usr/local/lib/node_modules/npm \
            /usr/local/bin/npm \
            /usr/local/bin/npx
 
 USER node
 
-EXPOSE 3000
+EXPOSE 3001
 
-CMD ["node", "index.js"]
+CMD ["./node_modules/.bin/serve", "-l", "3001", "."]
